@@ -5,8 +5,10 @@
 //! the Go implementation's wire format.
 
 pub mod p2p;
+pub mod compat;
 
 pub use p2p::*;
+pub use compat::{verify_roundtrip, validate_message, CompatError, ValidationError};
 
 /// Operation types for P2P messages.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

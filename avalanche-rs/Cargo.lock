@@ -593,8 +593,10 @@ version = "0.1.0"
 dependencies = [
  "avalanche-ids",
  "bytes",
+ "hex",
  "proptest",
  "prost",
+ "sha2",
  "thiserror",
  "zstd",
 ]
@@ -2272,6 +2274,7 @@ dependencies = [
  "avalanche-vm",
  "bytes",
  "chrono",
+ "hex",
  "parking_lot",
  "proptest",
  "serde",

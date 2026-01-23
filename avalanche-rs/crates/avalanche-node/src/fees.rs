@@ -408,10 +408,10 @@ mod tests {
         // Valid price
         assert!(calc.validate_gas_price(MIN_GAS_PRICE * 2).is_ok());
 
-        // Too low
+        // Too low (below base fee)
         assert!(matches!(
             calc.validate_gas_price(MIN_GAS_PRICE / 2),
-            Err(FeeError::BelowMinimum { .. })
+            Err(FeeError::MaxFeeTooLow { .. })
         ));
     }
 

@@ -366,50 +366,64 @@ impl ProposerScheduler for RoundRobinScheduler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::validators::{Validator, ValidatorSetError};
+    use crate::validators::Validator;
+    use crate::Result;
 
     struct MockValidatorSet {
         validators: Vec<Validator>,
+        subnet_id: Id,
     }
 
-    impl ValidatorSet for MockValidatorSet {
-        fn validators(&self) -> Vec<Validator> {
-            self.validators.clone()
+    impl ValidatorSetTrait for MockValidatorSet {
+        fn subnet_id(&self) -> Id {
+            self.subnet_id
         }
 
-        fn get_validator(&self, node_id: NodeId) -> Option<Validator> {
-            self.validators.iter().find(|v| v.node_id == node_id).cloned()
+        fn get(&self, node_id: &NodeId) -> Option<Validator> {
+            self.validators.iter().find(|v| v.node_id == *node_id).cloned()
         }
 
-        fn add_validator(&mut self, validator: Validator) -> std::result::Result<(), ValidatorSetError> {
-            self.validators.push(validator);
-            Ok(())
-        }
-
-        fn remove_validator(&mut self, node_id: NodeId) -> std::result::Result<(), ValidatorSetError> {
-            self.validators.retain(|v| v.node_id != node_id);
-            Ok(())
-        }
-
-        fn total_weight(&self) -> u64 {
-            self.validators.iter().map(|v| v.weight).sum()
+        fn contains(&self, node_id: &NodeId) -> bool {
+            self.validators.iter().any(|v| v.node_id == *node_id)
         }
 
         fn len(&self) -> usize {
             self.validators.len()
         }
 
-        fn contains(&self, node_id: NodeId) -> bool {
-            self.validators.iter().any(|v| v.node_id == node_id)
+        fn is_empty(&self) -> bool {
+            self.validators.is_empty()
+        }
+
+        fn total_weight(&self) -> u64 {
+            self.validators.iter().map(|v| v.weight).sum()
+        }
+
+        fn validators(&self) -> Vec<Validator> {
+            self.validators.clone()
+        }
+
+        fn node_ids(&self) -> Vec<NodeId> {
+            self.validators.iter().map(|v| v.node_id).collect()
+        }
+
+        fn sample(&self, k: usize) -> Result<Vec<NodeId>> {
+            Ok(self.validators.iter().take(k).map(|v| v.node_id).collect())
+        }
+
+        fn weight(&self, node_id: &NodeId) -> u64 {
+            self.get(node_id).map(|v| v.weight).unwrap_or(0)
         }
     }
 
     fn create_validator(id: u8, weight: u64) -> Validator {
-        Validator {
-            node_id: NodeId::from_bytes([id; 20]),
-            weight,
-            start_time: 0,
-            end_time: u64::MAX,
+        Validator::new(NodeId::from_bytes([id; 20]), weight)
+    }
+
+    fn create_mock_set(validators: Vec<Validator>) -> MockValidatorSet {
+        MockValidatorSet {
+            validators,
+            subnet_id: Id::default(),
         }
     }
 
@@ -421,13 +435,11 @@ mod tests {
             Duration::from_secs(1),
         );
 
-        let validators = MockValidatorSet {
-            validators: vec![
-                create_validator(1, 100),
-                create_validator(2, 100),
-                create_validator(3, 100),
-            ],
-        };
+        let validators = create_mock_set(vec![
+            create_validator(1, 100),
+            create_validator(2, 100),
+            create_validator(3, 100),
+        ]);
 
         let parent = Id::from_bytes([0; 32]);
 
@@ -458,12 +470,10 @@ mod tests {
             Duration::from_secs(1),
         );
 
-        let validators = MockValidatorSet {
-            validators: vec![
-                create_validator(1, 100),
-                create_validator(2, 100),
-            ],
-        };
+        let validators = create_mock_set(vec![
+            create_validator(1, 100),
+            create_validator(2, 100),
+        ]);
 
         let parent = Id::from_bytes([0; 32]);
 
@@ -472,20 +482,18 @@ mod tests {
         let delay2 = scheduler.get_delay(&validators, parent, 100, NodeId::from_bytes([2; 20]));
 
         // One should have shorter delay than the other
-        assert!(delay1 != delay2 || validators.validators.len() == 1);
+        assert!(delay1 != delay2 || validators.len() == 1);
     }
 
     #[test]
     fn test_round_robin_scheduler() {
         let scheduler = RoundRobinScheduler::new(Duration::from_secs(2));
 
-        let validators = MockValidatorSet {
-            validators: vec![
-                create_validator(1, 100),
-                create_validator(2, 100),
-                create_validator(3, 100),
-            ],
-        };
+        let validators = create_mock_set(vec![
+            create_validator(1, 100),
+            create_validator(2, 100),
+            create_validator(3, 100),
+        ]);
 
         let parent = Id::from_bytes([0; 32]);
 
@@ -512,13 +520,11 @@ mod tests {
             Duration::from_secs(1),
         );
 
-        let validators = MockValidatorSet {
-            validators: vec![
-                create_validator(1, 1000), // High stake
-                create_validator(2, 100),  // Low stake
-                create_validator(3, 500),  // Medium stake
-            ],
-        };
+        let validators = create_mock_set(vec![
+            create_validator(1, 1000), // High stake
+            create_validator(2, 100),  // Low stake
+            create_validator(3, 500),  // Medium stake
+        ]);
 
         let parent = Id::from_bytes([0; 32]);
 
@@ -539,9 +545,7 @@ mod tests {
             Duration::from_secs(1),
         );
 
-        let validators = MockValidatorSet {
-            validators: vec![],
-        };
+        let validators = create_mock_set(vec![]);
 
         let parent = Id::from_bytes([0; 32]);
 

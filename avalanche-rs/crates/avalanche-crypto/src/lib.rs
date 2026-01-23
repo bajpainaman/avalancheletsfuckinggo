@@ -8,10 +8,12 @@
 pub mod bls;
 pub mod secp256k1;
 pub mod keychain;
+pub mod security;
 
 pub use bls::{BlsPublicKey, BlsSecretKey, BlsSignature};
 pub use secp256k1::{PrivateKey, PublicKey, Signature, RecoverableSignature};
 pub use keychain::{Keychain, KeychainError};
+pub use security::{constant_time_eq, constant_time_eq_32, secure_zero, SecureBytes};
 
 use thiserror::Error;
 
